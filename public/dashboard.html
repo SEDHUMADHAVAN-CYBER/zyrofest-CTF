@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ZYROFEST-{CTF}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<!-- 🔥 NAVBAR -->
+<div class="nav">
+    <div class="left">
+        <div class="logo">ZYROFEST-{CTF}</div>
+        <a href="/dashboard.html">DASHBOARD</a>
+        <a href="/scoreboard.html">SCOREBOARD</a>
+        <a href="/team.html">TEAM</a>
+        <a href="/profile.html">PROFILE</a>
+    </div>
+    <div class="right">
+        <button onclick="toggleTheme()" id="themeBtn" class="theme-btn">🌙</button>
+        <a href="/index.html">LOGOUT</a>
+    </div>
+</div>
+
+<!-- 🔥 CONTENT -->
+<div class="container">
+    <h2>CHALLENGES</h2>
+
+    <!-- <div class="desc-box">
+        <h3>📢 ANNOUNCEMENT</h3>
+        <p>Mock Announcement Message</p>
+    </div> -->
+
+    <div class="grid">
+        <!-- Mock Challenge Card 1 -->
+        <div class="card solved-card">
+            <h3>Web Exploitation 101</h3>
+            <p>Web</p>
+            <p>100 PTS</p>
+            <a href="/challenge.html">
+                <button>SOLVED ✓</button>
+            </a>
+        </div>
+        
+        <!-- Mock Challenge Card 2 -->
+        <div class="card">
+            <h3>Reverse Engineering Basics</h3>
+            <p>Reverse Engineering</p>
+            <p>150 PTS</p>
+            <a href="/challenge.html">
+                <button>VIEW</button>
+            </a>
+        </div>
+        
+        <!-- Mock Challenge Card 3 -->
+        <div class="card">
+            <h3>Crypto Challenge</h3>
+            <p>Cryptography</p>
+            <p>200 PTS</p>
+            <a href="/challenge.html">
+                <button>VIEW</button>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- 🔥 FOOTER -->
+<footer class="footer">
+    <p>Developed by <b>sedhu madhavan</b></p>
+</footer>
+
+<!-- 🔥 THEME SCRIPT -->
+<script>
+function toggleTheme() {
+    let body = document.body;
+    if (body.classList.contains("dark")) {
+        body.classList.remove("dark");
+        localStorage.setItem("theme", "light");
+        document.getElementById("themeBtn").innerText = "🌙";
+    } else {
+        body.classList.add("dark");
+        localStorage.setItem("theme", "dark");
+        document.getElementById("themeBtn").innerText = "☀️";
+    }
+}
+window.onload = function() {
+    let theme = localStorage.getItem("theme");
+    if (theme === "dark") {
+        document.body.classList.add("dark");
+        document.getElementById("themeBtn").innerText = "☀️";
+    }
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "functions": {
+    "source": "."
+  },
+  "hosting": {
+    "site": "zyrofest-ctf",
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
