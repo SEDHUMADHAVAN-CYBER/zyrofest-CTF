@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
 
-const DB_PATH = path.join(__dirname, 'ctf.db');
+const DB_PATH = process.env.NODE_ENV === 'production' ? '/data/ctf.db' : path.join(__dirname, 'ctf.db');
 
 let database = null;
 
