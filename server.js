@@ -9,35 +9,51 @@ const db = require('./db/init');
 
 const app = express();
 
-// View engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Middleware
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use('/static', express.static(path.join(__dirname, 'static')));
 
-// Multer config
+// Secure Multer configuration with basic file type verification
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, path.join(__dirname, 'static', 'uploads'));
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + '-' + file.originalname.replace(/\s+/g, '_'));
+    const safeName = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    cb(null, Date.now() + '-' + safeName);
   }
 });
-const upload = multer({ storage });
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedExtensions = ['.zip', '.tar.gz', '.txt', '.pdf', '.png', '.jpg', '.jpeg'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedExtensions.includes(ext)) {
+      return cb(null, true);
+    }
+    cb(new Error('Invalid file extension extension. Upload rejected.'));
+  }
+});
 
+// Secure Session management driven by system environment variables
 app.use(session({
-  secret: 'ZYROFEST-{CTF}-ctf-secret-2026',
+  secret: process.env.SESSION_SECRET || 'fallback-dev-secret-replace-in-prod',
   resave: false,
-  saveUninitialized: false
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 1 day duration
+  }
 }));
 
 app.use(flash());
 
-// Global middleware
+// Global context middleware
 app.use((req, res, next) => {
   res.locals.user = req.session.user || null;
   res.locals.messages = {
@@ -55,16 +71,14 @@ app.use((req, res, next) => {
     res.locals.ctf_paused = false;
     res.locals.notification = null;
   }
-  
   next();
 });
 
-// Helper
 function sha256(text) {
   return crypto.createHash('sha256').update(text).digest('hex');
 }
 
-// Auth middleware
+// Authentication Wrappers
 function requireLogin(req, res, next) {
   if (req.session.user) {
     return next();
@@ -73,11 +87,14 @@ function requireLogin(req, res, next) {
 }
 
 function requireAdmin(req, res, next) {
-  const adminSettingRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_username');
-  const adminUsername = adminSettingRow ? adminSettingRow.value : 'madhavansedhu598@gmail.com';
-  
-  if (req.session.user && req.session.user.username === adminUsername) {
-    return next();
+  // Safe authentication checks against explicit database values
+  if (req.session.user && req.session.user.username) {
+    const adminSettingRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_username');
+    const adminUsername = adminSettingRow ? adminSettingRow.value : 'madhavansedhu598@gmail.com';
+    
+    if (req.session.user.username === adminUsername) {
+      return next();
+    }
   }
   req.flash('error', 'Access denied.');
   return res.redirect('/dashboard');
@@ -109,18 +126,23 @@ app.post('/', async (req, res) => {
     req.flash('error', 'Username and password are required.');
     return res.render('login');
   }
-  const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
-  if (!user) {
-    req.flash('error', 'Invalid username or password.');
+  try {
+    const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+    if (!user) {
+      req.flash('error', 'Invalid username or password.');
+      return res.render('login');
+    }
+    const validPassword = await bcrypt.compare(password, user.password_hash);
+    if (!validPassword) {
+      req.flash('error', 'Invalid username or password.');
+      return res.render('login');
+    }
+    req.session.user = { id: user.id, username: user.username, team_name: user.team_name, score: user.score };
+    return res.redirect('/dashboard');
+  } catch (err) {
+    req.flash('error', 'An internal server error occurred.');
     return res.render('login');
   }
-  const validPassword = await bcrypt.compare(password, user.password_hash);
-  if (!validPassword) {
-    req.flash('error', 'Invalid username or password.');
-    return res.render('login');
-  }
-  req.session.user = { id: user.id, username: user.username, team_name: user.team_name, score: user.score };
-  return res.redirect('/dashboard');
 });
 
 app.get('/register', (req, res) => {
@@ -129,6 +151,16 @@ app.get('/register', (req, res) => {
 
 app.post('/register', async (req, res) => {
   const { username, password, confirm_password, team_action, team_name } = req.body;
+  
+  // Protect admin name registration injection space
+  const adminSettingRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_username');
+  const adminUsername = adminSettingRow ? adminSettingRow.value : 'madhavansedhu598@gmail.com';
+  
+  if (username === adminUsername) {
+    req.flash('error', 'Username reserved.');
+    return res.render('register');
+  }
+
   if (!username || !password || username.length < 8 || password.length < 8) {
     req.flash('error', 'Username and password must be at least 8 characters.');
     return res.render('register');
@@ -193,6 +225,11 @@ app.post('/challenge/:id', requireLogin, checkCtfPaused, (req, res) => {
   const { flag } = req.body;
   const userId = req.session.user.id;
   
+  if (!flag) {
+    req.flash('error', 'Flag field cannot be blank.');
+    return res.redirect(`/challenge/${challenge.id}`);
+  }
+
   const isCorrect = sha256(flag.trim()) === challenge.flag_hash ? 1 : 0;
   db.prepare('INSERT INTO submissions (user_id, challenge_id, submitted_flag, is_correct) VALUES (?, ?, ?, ?)').run(userId, challenge.id, flag.trim(), isCorrect);
 
@@ -240,7 +277,6 @@ app.get('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/'));
 });
 
-
 // =====================
 // ADMIN DASHBOARD ROUTES
 // =====================
@@ -252,7 +288,8 @@ app.get('/admin', requireLogin, requireAdmin, (req, res) => {
 app.get('/admin/dashboard', requireLogin, requireAdmin, (req, res) => {
   const notificationsList = db.prepare('SELECT * FROM notifications ORDER BY created_at DESC').all();
   const topUsers = db.prepare('SELECT * FROM users ORDER BY score DESC LIMIT 5').all();
-  const ctf_paused = db.prepare("SELECT value FROM settings WHERE key = 'ctf_paused'").get().value === '1';
+  const pauseSetting = db.prepare("SELECT value FROM settings WHERE key = 'ctf_paused'").get();
+  const ctf_paused = pauseSetting ? pauseSetting.value === '1' : false;
   res.render('admin_dashboard', { notificationsList, topUsers, ctf_paused });
 });
 
@@ -278,22 +315,22 @@ app.post('/admin/notification/:id/delete', requireLogin, requireAdmin, (req, res
   return res.redirect('/admin/dashboard');
 });
 
-// ADMIN: USERS
 app.get('/admin/users', requireLogin, requireAdmin, (req, res) => {
   const users = db.prepare('SELECT * FROM users ORDER BY score DESC').all();
   res.render('admin_users', { users });
 });
+
 app.post('/admin/edit-user/:id', requireLogin, requireAdmin, (req, res) => {
   db.prepare('UPDATE users SET team_name = ?, score = ? WHERE id = ?').run(req.body.team_name || null, parseInt(req.body.score) || 0, req.params.id);
   req.flash('success', 'User updated.');
   return res.redirect('/admin/users');
 });
 
-// ADMIN: TEAMS
 app.get('/admin/teams', requireLogin, requireAdmin, (req, res) => {
   const teamsRaw = db.prepare('SELECT team_name, COUNT(*) as members, SUM(score) as total_score FROM users WHERE team_name IS NOT NULL GROUP BY team_name ORDER BY total_score DESC').all();
   res.render('admin_teams', { teams: teamsRaw });
 });
+
 app.post('/admin/rename-team', requireLogin, requireAdmin, (req, res) => {
   if (req.body.old_name && req.body.new_name) {
     db.prepare('UPDATE users SET team_name = ? WHERE team_name = ?').run(req.body.new_name, req.body.old_name);
@@ -302,7 +339,6 @@ app.post('/admin/rename-team', requireLogin, requireAdmin, (req, res) => {
   return res.redirect('/admin/teams');
 });
 
-// ADMIN: CHALLENGES
 app.get('/admin/challenges', requireLogin, requireAdmin, (req, res) => {
   const challenges = db.prepare('SELECT * FROM challenges ORDER BY sort_order ASC').all();
   res.render('admin_challenges', { challenges });
@@ -338,7 +374,6 @@ app.post('/admin/edit-challenge/:id', requireLogin, requireAdmin, upload.single(
     db.prepare('UPDATE challenges SET title=?, description=?, category=?, points=?, file_url=COALESCE(?, file_url), sort_order=? WHERE id=?').run(title, description, category, parseInt(points), finalFileUrl, parseInt(sort_order) || 0, req.params.id);
   }
   
-  // Recalc
   const users = db.prepare('SELECT id FROM users').all();
   for (const u of users) {
     const totalScore = db.prepare('SELECT COALESCE(SUM(c.points), 0) as total FROM solves s JOIN challenges c ON c.id = s.challenge_id WHERE s.user_id = ?').get(u.id);
@@ -356,9 +391,9 @@ app.post('/admin/challenge/:id/delete', requireLogin, requireAdmin, (req, res) =
   return res.redirect('/admin/challenges');
 });
 
-// ADMIN: SETTINGS
 app.get('/admin/settings', requireLogin, requireAdmin, (req, res) => {
-  const adminUsername = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_username').value;
+  const setting = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_username');
+  const adminUsername = setting ? setting.value : 'madhavansedhu598@gmail.com';
   res.render('admin_settings', { adminUsername });
 });
 
@@ -366,29 +401,24 @@ app.post('/admin/settings/change-admin', requireLogin, requireAdmin, async (req,
   const { new_username, new_password } = req.body;
   if (new_username && new_password) {
     const passwordHash = await bcrypt.hash(new_password, 10);
-    // Delete old admin from users table
-    const oldAdmin = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_username').value;
-    db.prepare('DELETE FROM users WHERE username = ?').run(oldAdmin);
-    // Insert new admin
-    db.prepare('INSERT INTO users (username, password_hash) VALUES (?, ?)').run(new_username, passwordHash);
-    // Update settings
+    const oldAdminRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_username');
+    const oldAdmin = oldAdminRow ? oldAdminRow.value : 'madhavansedhu598@gmail.com';
+    
+    // Update credentials inside existing database maps seamlessly
+    db.prepare('UPDATE users SET username = ?, password_hash = ? WHERE username = ?').run(new_username, passwordHash, oldAdmin);
     db.prepare("UPDATE settings SET value = ? WHERE key = 'admin_username'").run(new_username);
     
-    // Update current session to prevent logout
     req.session.user.username = new_username;
-    
     req.flash('success', 'Admin credentials updated successfully.');
   }
   return res.redirect('/admin/settings');
 });
 
-// ADMIN: PROJECTOR (Live Leaderboard)
 app.get('/admin/projector', requireLogin, requireAdmin, (req, res) => {
   const users = db.prepare('SELECT id, username, team_name, score FROM users ORDER BY score DESC, created_at ASC LIMIT 10').all();
   const notification = db.prepare('SELECT message FROM notifications ORDER BY created_at DESC LIMIT 1').get();
-  res.render('projector', { users, notification });
+  res.render('projector', { users, notification: notification || null });
 });
-
 
 // =====================
 // START SERVER
