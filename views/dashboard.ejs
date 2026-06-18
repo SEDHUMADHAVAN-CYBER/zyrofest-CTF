@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ZYROFEST-{CTF}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<!-- 🔥 NAVBAR -->
+<div class="nav">
+    <div class="left">
+        <div class="logo">ZYROFEST-{CTF}</div>
+        <a href="/dashboard">DASHBOARD</a>
+        <a href="/scoreboard">SCOREBOARD</a>
+        <a href="/team">TEAM</a>
+        <a href="/profile">PROFILE</a>
+    </div>
+    <div class="right">
+        <button onclick="toggleTheme()" id="themeBtn" class="theme-btn">🌙</button>
+        <% if (user) { %>
+            <a href="/logout">LOGOUT</a>
+        <% } %>
+    </div>
+</div>
+
+<!-- 🔥 CONTENT -->
+<div class="container">
+    <h2>CHALLENGES</h2>
+
+    <% if (messages.error) { %>
+        <p class="msg error"><%= messages.error %></p>
+    <% } %>
+    <% if (messages.success) { %>
+        <p class="msg success"><%= messages.success %></p>
+    <% } %>
+
+    <% if (ctf_paused) { %>
+        <div class="desc-box" style="border-color: red; color: red;">
+            <p style="background: rgba(255,0,0,0.1); font-weight: bold; text-align: center;">?? CTF IS CURRENTLY PAUSED ??<br>No flag submissions are allowed at this time.</p>
+        </div>
+    <% } %>
+
+    <% if (notification) { %>
+        <div class="desc-box">
+            <h3>?? ANNOUNCEMENT</h3>
+            <p><%= notification.message %></p>
+        </div>
+    <% } %>
+
+    <div class="grid">
+        <% challenges.forEach(function(c) { %>
+            <div class="card <%= c.solved ? 'solved-card' : '' %>">
+                <h3><%= c.title %></h3>
+                <p><%= c.category %></p>
+                <p><%= c.points %> PTS</p>
+                <a href="/challenge/<%= c.id %>">
+                    <button><%= c.solved ? 'SOLVED ✓' : 'VIEW' %></button>
+                </a>
+            </div>
+        <% }); %>
+    </div>
+</div>
+
+<!-- 🔥 FOOTER -->
+<footer class="footer">
+    <p>Developed by <b>sedhu madhavan</b></p>
+</footer>
+
+<!-- 🔥 THEME SCRIPT -->
+<script>
+function toggleTheme() {
+    let body = document.body;
+    if (body.classList.contains("dark")) {
+        body.classList.remove("dark");
+        localStorage.setItem("theme", "light");
+        document.getElementById("themeBtn").innerText = "🌙";
+    } else {
+        body.classList.add("dark");
+        localStorage.setItem("theme", "dark");
+        document.getElementById("themeBtn").innerText = "☀️";
+    }
+}
+window.onload = function() {
+    let theme = localStorage.getItem("theme");
+    if (theme === "dark") {
+        document.body.classList.add("dark");
+        document.getElementById("themeBtn").innerText = "☀️";
+    }
+}
+</script>
+
+</body>
+</html>

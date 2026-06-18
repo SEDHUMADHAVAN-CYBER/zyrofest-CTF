@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ZYROFEST-{CTF} ADMIN</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .admin-nav { display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
+        .admin-nav a button { width: auto; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <div class="left">
+        <div class="logo">SETTINGS</div>
+        <a href="/admin/dashboard">DASHBOARD</a>
+    </div>
+</div>
+
+<div class="container">
+    <div class="admin-nav">
+        <a href="/admin/users"><button>👥 USERS</button></a>
+        <a href="/admin/teams"><button>🛡️ TEAMS</button></a>
+        <a href="/admin/challenges"><button>🎯 CHALLENGES</button></a>
+        <a href="/admin/settings"><button style="background:var(--text-color); color:black;">⚙️ SETTINGS</button></a>
+    </div>
+
+    <% if (messages.success) { %><p class="msg success"><%= messages.success %></p><% } %>
+    <% if (messages.error) { %><p class="msg error"><%= messages.error %></p><% } %>
+
+    <div class="card" style="margin-top: 20px; max-width: 500px; margin-left: auto; margin-right: auto;">
+        <h3>CHANGE ADMIN CREDENTIALS</h3>
+        <p style="margin-bottom:20px; opacity:0.8;">Update the admin login username and password. You will not be logged out.</p>
+        
+        <form class="form-box" method="POST" action="/admin/settings/change-admin">
+            <label style="text-align:left; font-family:var(--font-heading); color:var(--accent-color);">NEW ADMIN USERNAME</label>
+            <input type="email" name="new_username" value="<%= adminUsername %>" required>
+            
+            <label style="text-align:left; font-family:var(--font-heading); color:var(--accent-color);">NEW ADMIN PASSWORD</label>
+            <input type="password" name="new_password" placeholder="Enter new password" required minlength="8">
+            
+            <button type="submit" style="margin-top:20px; border-color:var(--accent-color); color:var(--accent-color);">UPDATE CREDENTIALS</button>
+        </form>
+    </div>
+
+</div>
+
+</body>
+</html>
