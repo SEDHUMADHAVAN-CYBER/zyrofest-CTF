@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ZYROFEST-{CTF} ADMIN</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .admin-nav { display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
+        .admin-nav a button { width: auto; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="nav">
+    <div class="left">
+        <div class="logo">EDIT CHALLENGE</div>
+        <a href="/admin/dashboard">DASHBOARD</a>
+        <a href="/admin/challenges">BACK TO CHALLENGES</a>
+    </div>
+</div>
+
+<div class="container">
+    <div class="card" style="margin-top: 20px;">
+        <h3>EDIT: <%= challenge.title %></h3>
+        <form class="form-box" method="POST" action="/admin/edit-challenge/<%= challenge.id || challenge._id %>" enctype="multipart/form-data" style="margin-top: 10px;">
+            <label style="text-align:left; font-size:14px; color:var(--text-color);">TITLE</label>
+            <input type="text" name="title" value="<%= challenge.title %>" required>
+            
+            <label style="text-align:left; font-size:14px; color:var(--text-color);">DESCRIPTION (HTML Supported)</label>
+            <textarea name="description" rows="5" required><%= challenge.description %></textarea>
+            
+            <label style="text-align:left; font-size:14px; color:var(--text-color);">CATEGORY</label>
+            <input type="text" name="category" value="<%= challenge.category %>" required>
+            
+            <label style="text-align:left; font-size:14px; color:var(--text-color);">POINTS</label>
+            <input type="number" name="points" value="<%= challenge.points %>" required>
+            
+            <label style="text-align:left; font-size:14px; color:var(--accent-color);">NEW FLAG (Leave blank to keep current flag)</label>
+            <input type="text" name="flag" placeholder="ZYROFEST-{CTF}{...}">
+            
+            <label style="text-align:left; font-size:14px; color:var(--accent-color);">REPLACE ATTACHED FILE (Upload new file to replace)</label>
+            <input type="file" name="challenge_file" style="padding:8px; background: rgba(0,255,204,0.1);">
+            
+            <label style="text-align:left; font-size:14px; color:var(--text-color);">EXTERNAL FILE URL (Or leave as is: <%= challenge.file_url || 'None' %>)</label>
+            <input type="text" name="file_url" value="<%= challenge.file_url || '' %>">
+            
+            <label style="text-align:left; font-size:14px; color:var(--text-color);">SORT ORDER</label>
+            <input type="number" name="sort_order" value="<%= challenge.sort_order %>">
+            
+            <button type="submit">SAVE CHANGES</button>
+            <a href="/admin/challenges" style="text-decoration: none;">
+                <button type="button" style="background: transparent; color: var(--accent-color); border-color: var(--accent-color); margin-top: 15px; width: 100%;">CANCEL</button>
+            </a>
+        </form>
+    </div>
+</div>
+
+<script src="/static/ajax.js"></script>
+</body>
+</html>

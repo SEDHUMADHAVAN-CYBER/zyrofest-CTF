@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
 
-const DB_PATH = process.env.NODE_ENV === 'production' ? '/data/ctf.db' : path.join(__dirname, 'ctf.db');
+const DB_PATH = path.join(__dirname, 'ctf.db');
 
 let database = null;
 
@@ -221,7 +221,7 @@ const db = {
     // Seed admin user if not exists
     const adminSettingRow = db.prepare('SELECT value FROM settings WHERE key = ?').get('admin_username');
     const adminUsername = adminSettingRow ? adminSettingRow.value : 'madhavansedhu598@gmail.com';
-
+    
     const adminUser = db.prepare('SELECT id FROM users WHERE username = ?').get(adminUsername);
     if (!adminUser) {
       const passwordHash = await bcrypt.hash('sedhu@678', 10);
